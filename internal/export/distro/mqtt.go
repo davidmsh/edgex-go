@@ -38,17 +38,18 @@ func newMqttSender(addr contract.Addressable, cert string, key string) sender {
 	opts.SetAutoReconnect(false)
 
 	if protocol == "tcps" || protocol == "ssl" || protocol == "tls" {
-		cert, err := tls.LoadX509KeyPair(cert, key)
+		c, err := tls.LoadX509KeyPair(cert, key)
 
 		if err != nil {
-			LoggingClient.Error("Failed loading x509 data")
+            LoggingClient.Info(fmt.Sprintf("cert=%s, key=%s", cert, key))
+			LoggingClient.Error(fmt.Sprintf("Failed loading x509 data: %s", err))
 			return nil
 		}
 
 		tlsConfig := &tls.Config{
 			ClientCAs:          nil,
 			InsecureSkipVerify: true,
-			Certificates:       []tls.Certificate{cert},
+			Certificates:       []tls.Certificate{c},
 		}
 
 		opts.SetTLSConfig(tlsConfig)
@@ -66,20 +67,24 @@ func newMqttSender(addr contract.Addressable, cert string, key string) sender {
 func (sender *mqttSender) Send(data []byte, ctx context.Context) bool {
 	if !sender.client.IsConnected() {
 		LoggingClient.Info("Connecting to mqtt server")
+
 		if token := sender.client.Connect(); token.Wait() && token.Error() != nil {
 			LoggingClient.Error(fmt.Sprintf("Could not connect to mqtt server, drop event. Error: %s", token.Error().Error()))
 			return false
-		}
+		} else {
+            LoggingClient.Info("Connected to mqtt server")
+        }
 	}
 
+    LoggingClient.Debug(fmt.Sprintf("Sending data: %s", data))
 	token := sender.client.Publish(sender.topic, 0, false, data)
 	// FIXME: could be removed? set of tokens?
 	token.Wait()
 	if token.Error() != nil {
-		LoggingClient.Error(token.Error().Error())
+		LoggingClient.Error(fmt.Sprintf("Failed to send data: %s", token.Error().Error()))
 		return false
 	} else {
-		LoggingClient.Debug(fmt.Sprintf("Sent data: %X", data))
+		LoggingClient.Debug(fmt.Sprintf("Data sent: %X", data))
 		return true
 	}
 }

@@ -143,7 +143,8 @@ type azureFormatter struct {
 
 // Format method does all foramtting job.
 func (af azureFormatter) Format(event *contract.Event) []byte {
-	am, err := newAzureMessage()
+	/*
+    am, err := newAzureMessage()
 	if err != nil {
 		LoggingClient.Error(fmt.Sprintf("Error creating a new Azure message: %s", err))
 		return []byte{}
@@ -156,11 +157,25 @@ func (af azureFormatter) Format(event *contract.Event) []byte {
 		return []byte{}
 	}
 	am.Body = data
-	msg, err := json.Marshal(am)
+	//msg, err := json.Marshal(am)
+	msg, err := json.Marshal(event.Readings)
 	if err != nil {
 		LoggingClient.Error(fmt.Sprintf("Error parsing AzureMessage data: %s", err))
 		return []byte{}
 	}
+    */
+
+    readings := map[string]interface{}{}
+    for _, reading := range event.Readings {
+        readings[reading.Name] = reading.Value
+    }
+
+	msg, err := json.Marshal(readings)
+	if err != nil {
+		LoggingClient.Error(fmt.Sprintf("Error parsing AzureMessage data: %s", err))
+		return []byte{}
+	}
+
 	return msg
 }
 
